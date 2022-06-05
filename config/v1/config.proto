@@ -1,0 +1,18 @@
+
+syntax = "proto3";
+
+package gitidentity.config.v1;
+
+message VersionEntity {
+  string version = 1;
+}
+
+message Config {
+  string version = 1; // for this object must equal to "v1" when used as root object
+  repeated Identity list = 2; // list of targets
+}
+
+message Identity {
+  string name = 1; // git user.name property
+  string email = 2; // git user.email property
+}
