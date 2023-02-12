@@ -1,7 +1,7 @@
 # gitidentity
 
 [![Latest version](https://img.shields.io/github/v/tag/daishe/gitidentity?label=latest%20version&sort=semver)](https://github.com/daishe/gitidentity/releases)
-[![Latest release status](https://img.shields.io/github/workflow/status/daishe/gitidentity/Release?label=release%20build&logo=github&logoColor=fff)](https://github.com/daishe/gitidentity/actions/workflows/release.yaml)
+[![Latest release status](https://img.shields.io/github/actions/workflow/status/daishe/gitidentity/release.yaml?label=release%20build&logo=github&logoColor=fff)](https://github.com/daishe/gitidentity/actions/workflows/release.yaml)
 
 [![Go reference](https://pkg.go.dev/badge/github.com/daishe/gitidentity.svg)](https://pkg.go.dev/github.com/daishe/gitidentity)
 [![Go version](https://img.shields.io/github/go-mod/go-version/daishe/gitidentity?label=version&logo=go&logoColor=fff)](https://golang.org/dl/)
