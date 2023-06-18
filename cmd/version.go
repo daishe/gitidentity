@@ -34,16 +34,18 @@ func versionCmd(r *rootOptions) *cobra.Command {
 		Use:   "version",
 		Short: "Show version information",
 		Long:  "Show version information.",
+
+		Run: func(cmd *cobra.Command, args []string) {
+			if !versionCmdRun(cmd, r, o, args) {
+				os.Exit(1)
+			}
+		},
 	}
-	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if !versionCmdRun(cmd, r, o, args) {
-			os.Exit(1)
-		}
-	}
+
 	return cmd
 }
 
 func versionCmdRun(cmd *cobra.Command, r *rootOptions, o *versionOptions, args []string) bool {
-	fmt.Println("application: ", appVersion, ", commit: ", commitHash, ", configuration: ", configVersion)
+	fmt.Printf("application: %s, commit: %s, configuration: %s\n", appVersion, commitHash, configVersion)
 	return true
 }

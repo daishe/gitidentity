@@ -1,172 +1,36 @@
 package identity
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"path"
+	"regexp"
+	"runtime"
 	"sort"
 	"strings"
-	"unicode"
 
+	configv2 "github.com/daishe/gitidentity/config/v2"
+	"github.com/daishe/gitidentity/internal/gitinfo"
+	"github.com/daishe/gitidentity/internal/runcmd"
 	"google.golang.org/protobuf/encoding/protojson"
-
-	configv1 "github.com/daishe/gitidentity/config/v1"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
-type VersionEntity interface {
-	GetVersion() string
-}
-
-func checkVersionString(v string) error {
-	if strings.IndexFunc(v, unicode.IsSpace) != -1 {
-		return fmt.Errorf("version cannot contain whitespace characters")
-	} else if v == "" {
-		return fmt.Errorf("unset version is unsupported")
-	} else if v != "v1" {
-		return fmt.Errorf("version %s is unsupported", v)
+func IdentityAsString(i *configv2.Identity) string {
+	if id := i.GetIdentifier(); id != "" {
+		return id
 	}
-	return nil
-}
-
-func ValidateVersionEntity(ve VersionEntity) error {
-	return checkVersionString(ve.GetVersion())
-}
-
-func UnmarshalAndValidateVersionEntity(p []byte) (VersionEntity, error) {
-	ve := &configv1.VersionEntity{}
-	if err := (protojson.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(p, ve); err != nil {
-		return nil, fmt.Errorf("parsing version: %w", err)
-	}
-	return ve, checkVersionString(ve.Version)
-}
-
-func UnmarshalAndValidateConfig(cfgBytes []byte) (*configv1.Config, error) {
-	if _, err := UnmarshalAndValidateVersionEntity(cfgBytes); err != nil {
-		return nil, fmt.Errorf("unmarshalling configuration: %w", err)
-	}
-	cfg := &configv1.Config{}
-	if err := (protojson.UnmarshalOptions{AllowPartial: false, DiscardUnknown: false}).Unmarshal(cfgBytes, cfg); err != nil {
-		return nil, fmt.Errorf("unmarshalling configuration: %w", err)
-	}
-	SortIdentities(cfg.List)
-	return cfg, nil
-}
-
-func ReadConfig(path string) (*configv1.Config, error) {
-	cfgBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading configuration file: %w", err)
-	}
-	return UnmarshalAndValidateConfig(cfgBytes)
-}
-
-func EmptyConfig() *configv1.Config {
-	return &configv1.Config{Version: "v1"}
-}
-
-func WriteConfig(path string, cfg *configv1.Config) error {
-	cfgBytes, err := protojson.MarshalOptions{AllowPartial: false, Multiline: true, Indent: "  "}.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("marshalling configuration: %w", err)
-	}
-	if patentDir := filepath.Dir(path); patentDir != "" {
-		if err := os.MkdirAll(patentDir, 0755); err != nil {
-			return fmt.Errorf("making directory for user configuration: %w", err)
-		}
-	}
-	if err := os.WriteFile(path, cfgBytes, 0600); err != nil {
-		return fmt.Errorf("writing to configuration file: %w", err)
-	}
-	return nil
-}
-
-func CurrentIdentity(includeGlobal bool) (*configv1.Identity, error) {
-	i := &configv1.Identity{}
-	out := []byte(nil)
-	err := error(nil)
-	if includeGlobal {
-		out, err = exec.Command("git", "config", "--default=", "user.name").CombinedOutput()
-	} else {
-		out, err = exec.Command("git", "config", "--local", "--default=", "user.name").CombinedOutput()
-	}
-	if err != nil {
-		return nil, commandError("git config user.name ...", out, err)
-	}
-	i.Name = strings.TrimSpace(string(out))
-
-	if includeGlobal {
-		out, err = exec.Command("git", "config", "--default=", "user.email").CombinedOutput()
-	} else {
-		out, err = exec.Command("git", "config", "--local", "--default=", "user.email").CombinedOutput()
-	}
-	if err != nil {
-		return nil, commandError("git config user.email ...", out, err)
-	}
-	i.Email = strings.TrimSpace(string(out))
-	return i, nil
-}
-
-func GlobalIdentity() (*configv1.Identity, error) {
-	i := &configv1.Identity{}
-	out, err := exec.Command("git", "config", "--global", "--default=", "user.name").CombinedOutput()
-	if err != nil {
-		return nil, commandError("git config user.name ...", out, err)
-	}
-	i.Name = strings.TrimSpace(string(out))
-	out, err = exec.Command("git", "config", "--global", "--default=", "user.email").CombinedOutput()
-	if err != nil {
-		return nil, commandError("git config user.email ...", out, err)
-	}
-	i.Email = strings.TrimSpace(string(out))
-	return i, nil
-}
-
-func ApplyIdentity(i *configv1.Identity) error {
-	out := []byte(nil)
-	err := error(nil)
-	if n := i.GetName(); n != "" {
-		out, err = exec.Command("git", "config", "--local", "user.name", n).CombinedOutput()
-	} else {
-		out, err = exec.Command("git", "config", "--local", "--unset", "user.name").CombinedOutput()
-	}
-	if err != nil {
-		return commandError("git config user.name ...", out, err)
-	}
-
-	if e := i.GetEmail(); e != "" {
-		out, err = exec.Command("git", "config", "--local", "user.email", e).CombinedOutput()
-	} else {
-		out, err = exec.Command("git", "config", "--local", "--unset", "user.email").CombinedOutput()
-	}
-	if err != nil {
-		return commandError("git config user.email ...", out, err)
-	}
-	return nil
-}
-
-func commandError(cmd string, out []byte, err error) error {
-	if ee := (&exec.ExitError{}); errors.As(err, &ee) {
-		err = fmt.Errorf("setting user email: command %q returned non zero exit code %d", cmd, ee.ExitCode())
-	} else {
-		err = fmt.Errorf("setting user email: command %q unexpected error: %w", cmd, err)
-	}
-	if len(out) != 0 {
-		err = fmt.Errorf("%w, command output:\n%s", err, out)
-	}
-	return err
-}
-
-func IdentityAsString(i *configv1.Identity) string {
-	n, e := i.GetName(), i.GetEmail()
+	n, e := userName(i), userEmail(i)
 	if n == "" {
 		return fmt.Sprintf("<%s>", e)
 	}
 	return fmt.Sprintf("%s <%s>", n, e)
 }
 
-func IdentitiesAsStrings(is []*configv1.Identity) []string {
+func IdentitiesAsStrings(is []*configv2.Identity) []string {
 	ss := make([]string, len(is))
 	for idx, i := range is {
 		ss[idx] = IdentityAsString(i)
@@ -174,11 +38,310 @@ func IdentitiesAsStrings(is []*configv1.Identity) []string {
 	return ss
 }
 
-func SortIdentities(is []*configv1.Identity) {
+func SortIdentities(is []*configv2.Identity) {
 	sort.Slice(is, func(i, j int) bool {
-		if is[i].Name != is[j].Name {
-			return is[i].Name < is[j].Name
-		}
-		return is[i].Email < is[j].Email
+		return IdentityAsString(is[i]) < IdentityAsString(is[j])
 	})
+}
+
+func valueOf(i *configv2.Identity, key string) string {
+	v := i.GetValues()
+	if v == nil {
+		return ""
+	}
+	return v[key]
+}
+
+func userName(i *configv2.Identity) string {
+	return valueOf(i, runcmd.GitNameKey)
+}
+
+func userEmail(i *configv2.Identity) string {
+	return valueOf(i, runcmd.GitEmailKey)
+}
+
+func gitNameAndEmailAsIdentity(ctx context.Context, local runcmd.FlagLocalState, global runcmd.FlagGlobalState) (*configv2.Identity, error) {
+	i := &configv2.Identity{Values: make(map[string]string, 2)}
+	err := error(nil)
+	i.Values[runcmd.GitNameKey], _, err = runcmd.GetGitConfigValue(ctx, runcmd.GitNameKey, local, global)
+	if err != nil {
+		return nil, err
+	}
+	i.Values[runcmd.GitEmailKey], _, err = runcmd.GetGitConfigValue(ctx, runcmd.GitEmailKey, local, global)
+	if err != nil {
+		return nil, err
+	}
+	i.Identifier = IdentityAsString(i)
+	return i, nil
+}
+
+func CurrentIdentity(ctx context.Context, includeGlobal bool) (*configv2.Identity, error) {
+	last, has, err := runcmd.GetGitConfigValue(ctx, runcmd.GitLastAppliedKey, runcmd.FlagLocalOn, runcmd.FlagGlobalOff)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		if includeGlobal {
+			return gitNameAndEmailAsIdentity(ctx, runcmd.FlagLocalOff, runcmd.FlagGlobalOff)
+		}
+		return nil, ErrNoCurrentIdentity
+	}
+
+	any := &anypb.Any{}
+	if err := protojson.Unmarshal([]byte(last), any); err != nil {
+		return nil, fmt.Errorf("failed to unmarshall value of %s config key", runcmd.GitLastAppliedKey)
+	}
+	i, err := unmarshallIdentityFromAny(any)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshall value of %s config key: %w", runcmd.GitLastAppliedKey, err)
+	}
+
+	for field := range i.GetValues() {
+		i.Values[field], _, err = runcmd.GetGitConfigValue(ctx, field, runcmd.FlagLocalState(!includeGlobal), runcmd.FlagGlobalOff)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return i, nil
+}
+
+func GlobalIdentity(ctx context.Context) (*configv2.Identity, error) {
+	return gitNameAndEmailAsIdentity(ctx, runcmd.FlagLocalOff, runcmd.FlagGlobalOn)
+}
+
+func unsetNameAndEmail(ctx context.Context) error {
+	if err := runcmd.SetGitConfigValue(ctx, runcmd.GitNameKey, ""); err != nil {
+		return err
+	}
+	if err := runcmd.SetGitConfigValue(ctx, runcmd.GitEmailKey, ""); err != nil {
+		return err
+	}
+	return nil
+}
+
+func UnsetCurrentIdentity(ctx context.Context) error {
+	i, err := CurrentIdentity(ctx, false)
+	if errors.Is(err, ErrNoCurrentIdentity) {
+		return unsetNameAndEmail(ctx)
+	}
+	if err != nil {
+		return err
+	}
+
+	for field := range i.GetValues() {
+		if err := runcmd.SetGitConfigValue(ctx, field, ""); err != nil {
+			return err
+		}
+	}
+	if err := runcmd.SetGitConfigValue(ctx, runcmd.GitLastAppliedKey, ""); err != nil {
+		return err
+	}
+	return unsetNameAndEmail(ctx)
+}
+
+func ApplyIdentity(ctx context.Context, i *configv2.Identity) error {
+	if err := UnsetCurrentIdentity(ctx); err != nil {
+		return err
+	}
+	if i == nil {
+		return nil
+	}
+
+	i.Identifier = IdentityAsString(i)
+	any, err := marshallIdentityIntoAny(i)
+	if err != nil {
+		return err
+	}
+	if err := runcmd.SetGitConfigValue(ctx, runcmd.GitLastAppliedKey, string(any)); err != nil {
+		return err
+	}
+	for key, value := range i.GetValues() {
+		if err := runcmd.SetGitConfigValue(ctx, key, value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ApplyIdentityAsArgs(ctx context.Context, i *configv2.Identity) ([]string, error) {
+	i.Identifier = IdentityAsString(i)
+	any, err := marshallIdentityIntoAny(i)
+	if err != nil {
+		return nil, err
+	}
+	args := make([]string, 0, len(i.GetValues())+1)
+	args = append(args, fmt.Sprintf("--config=%s=%s", runcmd.GitLastAppliedKey, any))
+	for k, v := range i.GetValues() {
+		args = append(args, fmt.Sprintf("--config=%s=%s", k, v))
+	}
+	return args, nil
+}
+
+func FirstAutoMatchingIdentity(ctx context.Context, is []*configv2.Identity, info *gitinfo.GitInfo) (*configv2.Identity, error) {
+	for _, i := range is {
+		matched, err := AutoMatchIdentity(ctx, i, info)
+		if err != nil {
+			return nil, err
+		}
+		if matched {
+			return i, nil
+		}
+	}
+	return nil, nil
+}
+
+func AutoMatchIdentity(ctx context.Context, i *configv2.Identity, info *gitinfo.GitInfo) (bool, error) {
+	for _, ml := range i.GetAutoApplyWhen() {
+		verdict, err := matchList(ctx, ml, info)
+		if err != nil {
+			return false, fmt.Errorf("identity %q: %w", i.GetIdentifier(), err)
+		}
+		if verdict {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func matchList(ctx context.Context, ml *configv2.MatchList, info *gitinfo.GitInfo) (bool, error) {
+	if len(ml.GetMatch()) == 0 {
+		return false, nil
+	}
+	for _, m := range ml.GetMatch() {
+		verdict, err := match(ctx, m, info)
+		if err != nil {
+			return false, err
+		}
+		if !verdict {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func match(ctx context.Context, m *configv2.Match, info *gitinfo.GitInfo) (verdict bool, err error) {
+	switch s := m.Subject.(type) {
+	case *configv2.Match_Env:
+		verdict, err = matchEnv(ctx, s.Env)
+	case *configv2.Match_Remote:
+		verdict, err = matchRemote(ctx, s.Remote, info)
+	case *configv2.Match_Command:
+		verdict, err = matchCommand(ctx, s.Command)
+	case *configv2.Match_ShellScript:
+		verdict, err = matchShellScript(ctx, s.ShellScript)
+	default:
+		return false, nil // unknown matching subject
+	}
+	return
+}
+
+func matchEnv(ctx context.Context, m *configv2.MatchEnv) (bool, error) {
+	envValue, envExists := os.LookupEnv(m.GetName())
+	if !envExists {
+		return m.To.GetNegate(), nil
+	}
+	verdict, err := condition(m.GetTo(), envValue)
+	if err != nil {
+		return false, fmt.Errorf("matching environment variable %q: %w", m.GetName(), err)
+	}
+	return verdict, nil
+}
+
+func matchRemote(ctx context.Context, m *configv2.MatchRemote, info *gitinfo.GitInfo) (bool, error) {
+	for _, r := range info.Remotes {
+		ok, err := matchSingleRemote(ctx, m, r)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func matchSingleRemote(ctx context.Context, m *configv2.MatchRemote, r *gitinfo.Remote) (bool, error) {
+	name, err := condition(m.GetName(), r.Name)
+	if err != nil {
+		return false, fmt.Errorf("matching remote %q name: %w", r.Name, err)
+	}
+	url, err := condition(m.GetUrl(), r.Url)
+	if err != nil {
+		return false, fmt.Errorf("matching remote %q url: %w", r.Name, err)
+	}
+	return name && url, nil
+}
+
+func matchCommand(ctx context.Context, m *configv2.MatchCommand) (bool, error) {
+	cmd := make([]string, 0, len(m.GetArgs())+1)
+	cmd = append(cmd, m.GetCmd())
+	cmd = append(cmd, m.GetArgs()...)
+	out, err := runcmd.CommandCombinedOutput(ctx, cmd[0], cmd[1:]...)
+	if ee := (&exec.ExitError{}); errors.As(err, &ee) && !m.GetAllowNonZeroExitCode() { // non zero exit code
+		return false, nil
+	}
+	if err != nil {
+		return false, runcmd.CommandError(strings.Join(cmd, " "), out, err)
+	}
+	verdict, err := condition(m.GetOutput(), string(out))
+	if err != nil {
+		return false, fmt.Errorf("matching command output: %w", err)
+	}
+	return verdict, nil
+}
+
+func matchShellScript(ctx context.Context, m *configv2.MatchShellScript) (bool, error) {
+	cmd := append(getAutoMatchShell(), m.GetContent())
+	out, err := runcmd.CommandCombinedOutput(ctx, cmd[0], cmd[1:]...)
+	if ee := (&exec.ExitError{}); errors.As(err, &ee) && !m.GetAllowNonZeroExitCode() { // non zero exit code
+		return false, nil
+	}
+	if err != nil {
+		return false, runcmd.CommandError(strings.Join(cmd, " "), out, err)
+	}
+	verdict, err := condition(m.GetOutput(), string(out))
+	if err != nil {
+		return false, fmt.Errorf("matching command output: %w", err)
+	}
+	return verdict, nil
+}
+
+func getAutoMatchShell() []string {
+	if runtime.GOOS == "windows" {
+		return []string{"powershell.exe", "-NoProfile"}
+	}
+	return []string{"sh", "-c"}
+}
+
+func condition(c *configv2.Condition, target string) (bool, error) {
+	verdict := false
+	switch c.GetMode() {
+	case configv2.ConditionMode_CONTAINS:
+		verdict = strings.Contains(target, c.GetValue())
+	case configv2.ConditionMode_PREFIX:
+		verdict = strings.HasPrefix(target, c.GetValue())
+	case configv2.ConditionMode_SUFFIX:
+		verdict = strings.HasSuffix(target, c.GetValue())
+	case configv2.ConditionMode_FULL:
+		verdict = target == c.GetValue()
+	case configv2.ConditionMode_SHELL_PATTERN:
+		v, err := path.Match(c.GetValue(), target)
+		if err != nil {
+			return false, fmt.Errorf("matching shell pattern: %w", err)
+		}
+		verdict = v
+	case configv2.ConditionMode_REGEXP:
+		r, err := regexp.Compile(c.GetValue())
+		if err != nil {
+			return false, fmt.Errorf("compiling regexp: %w", err)
+		}
+		verdict = r.MatchString(target)
+	default:
+		return false, fmt.Errorf("unknown condition mode")
+	}
+
+	if c.GetNegate() {
+		verdict = !verdict
+	}
+	return verdict, nil
 }

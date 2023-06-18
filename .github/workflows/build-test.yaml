@@ -40,13 +40,63 @@ jobs:
         go-version: ${{ env.go_version }}
         cache: true
 
+    - name: "Test project"
+      run: go test -timeout 5m ./...
+
+  lint:
+    name: "Lint [${{ matrix.os }}]"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macOS-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+    - name: "Checkout"
+      uses: actions/checkout@v3
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.go_version }}
+        cache: true
+
     - name: "Lint Go code"
       uses: golangci/golangci-lint-action@v3
       with:
         version: latest
 
-    - name: "Test project"
-      run: go test -timeout 5m ./...
+  check_generated_code:
+    name: "Check generated code"
+
+    runs-on: "ubuntu-latest"
+
+    steps:
+
+    - name: "Checkout"
+      uses: actions/checkout@v3
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.go_version }}
+        cache: true
+
+    - name: "Check if proto definition are properly generated"
+      run: |
+        go generate -tags proto ./...
+        if [[ ! (git update-index --refresh > /dev/null && git diff-index --quiet HEAD --) ]]; then
+          echo 'ERROR: Proto definitions are outdated.' >&2
+          echo 'Please generate proto definitions by running' >&2
+          echo '    go generate -tags proto ./...' >&2
+          echo 'in the root of the repository before committing changes.' >&2
+        fi
 
   build:
     name: "Build [${{ matrix.GOOS }}/${{ matrix.GOARCH }}]"

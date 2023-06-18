@@ -1,16 +1,20 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	configv2 "github.com/daishe/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/identity"
+	"github.com/daishe/gitidentity/internal/runcmd"
 )
 
 type setOptions struct {
-	name  string
-	email string
+	noAuto   bool
+	onlyAuto bool
 }
 
 func setCmd(r *rootOptions) *cobra.Command {
@@ -19,58 +23,86 @@ func setCmd(r *rootOptions) *cobra.Command {
 		Use:   "set",
 		Short: "Set local repository identity",
 		Long:  "Set local identity for current repository based on gitidentity user configuration file.",
+
+		Run: func(cmd *cobra.Command, args []string) {
+			if !setCmdRun(cmd, r, o, args) {
+				os.Exit(1)
+			}
+		},
 	}
-	cmd.Flags().StringVar(&o.name, "name", "", "User name value")
-	cmd.Flags().StringVar(&o.email, "email", "", "User email value")
-	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if !setCmdRun(cmd, r, o, args) {
-			os.Exit(1)
-		}
-	}
+
+	cmd.Flags().BoolVar(&o.noAuto, "no-auto", false, "do not to apply auto applicable identities")
+	cmd.Flags().BoolVar(&o.onlyAuto, "only-auto", false, "attempt to only apply auto applicable identities")
 	return cmd
 }
 
 func setCmdRun(cmd *cobra.Command, r *rootOptions, o *setOptions, args []string) bool {
+	if o.noAuto && o.onlyAuto {
+		showErr(cmd, fmt.Errorf("conflicting options %q and %q", "no-auto", "only-auto"))
+		return false
+	}
+
 	cfg, err := identity.ReadConfig(r.config)
 	if err != nil {
 		showErr(cmd, err)
 		return false
 	}
 
-	stringifiedIdentities := identity.IdentitiesAsStrings(cfg.List)
-	addMetadataToStringifiedIdentity(stringifiedIdentities)
-
-	idx, err := selectPrompt("Select identity", stringifiedIdentities)
-	if err != nil {
-		showErr(cmd, err)
+	if !o.noAuto {
+		i, err := setCmdRun_auto(cmd.Context(), cfg.GetList())
+		if err != nil {
+			showErr(cmd, err)
+			return false
+		}
+		if i != nil {
+			fmt.Fprintln(cmd.OutOrStdout(), "Automatically selected identity:", identity.IdentityAsString(i))
+			return true
+		}
+	}
+	if o.onlyAuto {
+		showErr(cmd, fmt.Errorf("no matching identity"))
 		return false
 	}
 
-	if err := identity.ApplyIdentity(cfg.List[idx]); err != nil {
+	_, err = setCmdRun_manual(cmd.Context(), cfg.GetList())
+	if err != nil {
 		showErr(cmd, err)
 		return false
 	}
 	return true
 }
 
-func addMetadataToStringifiedIdentity(stringifiedIdentities []string) {
-	current, err := identity.CurrentIdentity(false)
-	currentStr := identity.IdentityAsString(current)
+func setCmdRun_auto(ctx context.Context, list []*configv2.Identity) (*configv2.Identity, error) {
+	gi, err := runcmd.GitInfoFromDir(ctx)
 	if err != nil {
-		currentStr = "" // setting current to empty will effectively result in skipping 'current' metadata tag
+		return nil, err
 	}
-	global, err := identity.GlobalIdentity()
-	globalStr := identity.IdentityAsString(global)
+
+	i, err := identity.FirstAutoMatchingIdentity(ctx, list, gi)
 	if err != nil {
-		globalStr = "" // setting global to empty will effectively result in skipping 'global' metadata tag
+		return nil, err
 	}
-	for idx := range stringifiedIdentities {
-		if stringifiedIdentities[idx] == currentStr && currentStr == globalStr {
-			stringifiedIdentities[idx] += " (current, global)"
-		} else if stringifiedIdentities[idx] == currentStr {
-			stringifiedIdentities[idx] += " (current)"
-		} else if stringifiedIdentities[idx] == globalStr {
-			stringifiedIdentities[idx] += " (global)"
-		}
+	if i == nil {
+		return nil, nil
 	}
+
+	if err := identity.ApplyIdentity(ctx, i); err != nil {
+		return nil, err
+	}
+	return i, nil
+}
+
+func setCmdRun_manual(ctx context.Context, list []*configv2.Identity) (*configv2.Identity, error) {
+	i, err := selectIdentityPrompt(ctx, list)
+	if err != nil {
+		return nil, err
+	}
+	if i == nil {
+		return nil, fmt.Errorf("no identity selected")
+	}
+
+	if err := identity.ApplyIdentity(ctx, i); err != nil {
+		return nil, err
+	}
+	return i, err
 }

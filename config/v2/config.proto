@@ -1,0 +1,71 @@
+
+syntax = "proto3";
+
+package gitidentity.config.v2;
+
+message VersionEntity {
+  string version = 1;
+}
+
+message Config {
+  string version = 1; // for this object must equal to "v2"
+  repeated Identity list = 2; // list of targets
+}
+
+message Identity {
+  string identifier = 1; // identity identifier
+  map<string, string> values = 2; // other git config values
+
+  repeated MatchList auto_apply_when = 100; // logical disjunction of logical conjunctions of match rules for identity auto application
+}
+
+message MatchList {
+  repeated Match match = 1; // logical conjunction of match rules
+}
+
+message Match {
+  oneof subject {
+    MatchEnv env = 1; // match rule on environment variable
+    MatchRemote remote = 2; // match rules on Git remote
+    MatchCommand command = 3; // match rules on command output
+    MatchShellScript shell_script = 4; // match rules on shell script output
+  }
+}
+
+message MatchEnv {
+  string name = 1; // name of the environment variable
+  Condition to = 2; // condition to apply to the variable
+}
+
+message MatchRemote {
+  Condition name = 1; // conditions to match remote name
+  Condition url = 2; // conditions to match remote url
+}
+
+message MatchCommand {
+  string cmd = 1; // path to command or command executable (if available in PATH)
+  repeated string args = 2; // list of arguments for command
+  Condition output = 3; // conditions on command output
+  bool allow_non_zero_exit_code = 4; // controls if command non-zero exit code should be ignored by match rule
+}
+
+message MatchShellScript {
+  string content = 1; // shell script code
+  Condition output = 2; // conditions on script output
+  bool allow_non_zero_exit_code = 3; // controls if script non-zero exit code should be ignored by match rule
+}
+
+message Condition {
+  ConditionMode mode = 1; // mode of string comparison
+  bool negate = 2; // reverse condition, when true condition will be treaded as successful, when value does not match
+  string value = 3; // value for comparison
+}
+
+enum ConditionMode {
+  CONTAINS = 0; // comparison mode indicating, that a given string should contain some value
+  PREFIX = 1; // comparison mode indicating, that a given string should have some value prefix
+  SUFFIX = 2; // comparison mode indicating, that a given string should have some value suffix
+  FULL = 3; // comparison mode indicating, that a given string should equal to some value fully
+  SHELL_PATTERN = 4; // comparison mode indicating, that a given string should match some value containing a shell patter
+  REGEXP = 5; // comparison mode indicating, that a given string should match some value containing a regular expression
+}

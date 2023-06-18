@@ -8,7 +8,7 @@ message VersionEntity {
 }
 
 message Config {
-  string version = 1; // for this object must equal to "v1" when used as root object
+  string version = 1; // for this object must equal to "v1"
   repeated Identity list = 2; // list of targets
 }
 

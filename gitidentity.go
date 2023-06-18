@@ -11,7 +11,7 @@ import (
 var (
 	Version              = "development"
 	Commit               = "?"
-	ConfigurationVersion = "v1"
+	ConfigurationVersion = "v2"
 )
 
 func main() {

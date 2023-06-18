@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -9,8 +10,49 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
+	configv2 "github.com/daishe/gitidentity/config/v2"
+	"github.com/daishe/gitidentity/internal/identity"
 	"github.com/manifoldco/promptui"
 )
+
+func selectIdentityPrompt(ctx context.Context, list []*configv2.Identity) (*configv2.Identity, error) {
+	if len(list) == 0 {
+		return nil, fmt.Errorf("no identities configured")
+	}
+
+	stringifiedIdentities := identity.IdentitiesAsStrings(list)
+	addMetadataToStringifiedIdentity(ctx, stringifiedIdentities)
+	idx, err := selectPrompt("Select identity", stringifiedIdentities)
+	if err != nil {
+		return nil, err
+	}
+	if idx < 0 || idx >= len(list) {
+		return nil, nil
+	}
+	return list[idx], nil
+}
+
+func addMetadataToStringifiedIdentity(ctx context.Context, stringifiedIdentities []string) {
+	current, err := identity.CurrentIdentity(ctx, false)
+	currentStr := identity.IdentityAsString(current)
+	if err != nil {
+		currentStr = "" // setting current to empty will effectively result in skipping 'current' metadata tag
+	}
+	global, err := identity.GlobalIdentity(ctx)
+	globalStr := identity.IdentityAsString(global)
+	if err != nil {
+		globalStr = "" // setting global to empty will effectively result in skipping 'global' metadata tag
+	}
+	for idx := range stringifiedIdentities {
+		if stringifiedIdentities[idx] == currentStr && currentStr == globalStr {
+			stringifiedIdentities[idx] += " (current, global)"
+		} else if stringifiedIdentities[idx] == currentStr {
+			stringifiedIdentities[idx] += " (current)"
+		} else if stringifiedIdentities[idx] == globalStr {
+			stringifiedIdentities[idx] += " (global)"
+		}
+	}
+}
 
 func selectPrompt(msg string, list []string) (int, error) {
 	if runtime.GOOS == "windows" {

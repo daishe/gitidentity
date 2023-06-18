@@ -3,16 +3,20 @@ package cmd
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
-	configv1 "github.com/daishe/gitidentity/config/v1"
+	configv2 "github.com/daishe/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/identity"
+	"github.com/daishe/gitidentity/internal/runcmd"
 )
 
 type addOptions struct {
-	name  string
-	email string
+	id     string
+	name   string
+	email  string
+	values []string
 }
 
 func addCmd(r *rootOptions) *cobra.Command {
@@ -21,14 +25,18 @@ func addCmd(r *rootOptions) *cobra.Command {
 		Use:   "add",
 		Short: "Add new identity to configuration",
 		Long:  "Add new identity to gitidentity user configuration file.",
+
+		Run: func(cmd *cobra.Command, args []string) {
+			if !addCmdRun(cmd, r, o, args) {
+				os.Exit(1)
+			}
+		},
 	}
-	cmd.Flags().StringVar(&o.name, "name", "", "User name value")
-	cmd.Flags().StringVar(&o.email, "email", "", "User email value")
-	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if !addCmdRun(cmd, r, o, args) {
-			os.Exit(1)
-		}
-	}
+
+	cmd.Flags().StringVar(&o.id, "id", "", "identifier of identity for easier identification (automatically generated from name and email when empty)")
+	cmd.Flags().StringVar(&o.name, "name", "", "user name value")
+	cmd.Flags().StringVar(&o.email, "email", "", "user email value")
+	cmd.Flags().StringArrayVar(&o.values, "value", nil, "extra git config value")
 	return cmd
 }
 
@@ -41,7 +49,19 @@ func addCmdRun(cmd *cobra.Command, r *rootOptions, o *addOptions, args []string)
 		showErr(cmd, err)
 		return false
 	}
-	cfg.List = append(cfg.List, &configv1.Identity{Name: o.name, Email: o.email})
+
+	i := &configv2.Identity{
+		Identifier: o.id,
+		Values:     make(map[string]string, len(o.values)+2),
+	}
+	for _, v := range o.values {
+		k, d, _ := strings.Cut(v, "=")
+		i.Values[k] = d
+	}
+	i.Values[runcmd.GitNameKey] = o.name
+	i.Values[runcmd.GitEmailKey] = o.email
+
+	cfg.List = append(cfg.List, i)
 	identity.SortIdentities(cfg.List)
 	if err := identity.WriteConfig(r.config, cfg); err != nil {
 		showErr(cmd, err)
