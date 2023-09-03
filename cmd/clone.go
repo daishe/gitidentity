@@ -56,7 +56,9 @@ func cloneCmdRun(cmd *cobra.Command, r *rootOptions, o *cloneOptions, args []str
 		showErr(cmd, err)
 		return false
 	}
-	if i == nil {
+	if i != nil {
+		fmt.Fprintln(cmd.OutOrStdout(), "Automatically selected identity:", identity.IdentityAsString(i))
+	} else {
 		i, err = selectIdentityPrompt(cmd.Context(), cfg.GetList())
 		if err != nil {
 			showErr(cmd, err)
