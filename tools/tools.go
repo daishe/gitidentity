@@ -1,6 +1,6 @@
 //go:build tools
 
-package gitidentity
+package tools
 
 import (
 	_ "github.com/bufbuild/buf/cmd/buf"

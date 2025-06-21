@@ -41,7 +41,7 @@ jobs:
         cache: true
 
     - name: "Test project"
-      run: go test -timeout 5m ./...
+      run: make test
 
   lint:
     name: "Lint [${{ matrix.os }}]"
@@ -90,11 +90,11 @@ jobs:
 
     - name: "Check if proto definition are properly generated"
       run: |
-        go generate -tags proto ./...
+        make proto
         if [[ ! (git update-index --refresh > /dev/null && git diff-index --quiet HEAD --) ]]; then
           echo 'ERROR: Proto definitions are outdated.' >&2
           echo 'Please generate proto definitions by running' >&2
-          echo '    go generate -tags proto ./...' >&2
+          echo '    make proto' >&2
           echo 'in the root of the repository before committing changes.' >&2
         fi
 
