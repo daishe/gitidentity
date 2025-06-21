@@ -196,13 +196,7 @@ jobs:
         echo "GIT_COMMIT=$GIT_COMMIT" >> $GITHUB_ENV
 
     - name: "Build project [${{ matrix.GOOS }}/${{ matrix.GOARCH }}]"
-      run: |
-        mkdir -p dist
-        GOOS=${{ matrix.GOOS }} GOARCH=${{ matrix.GOARCH }} go build \
-          -ldflags="-X 'main.Version=$GIT_TAG' -X 'main.Commit=$GIT_COMMIT'" \
-          -o dist/gitidentity-${{ matrix.GOOS }}-${{ matrix.GOARCH }} \
-          -v \
-          .
+      run: make dist/gitidentity-${{ matrix.GOOS }}-${{ matrix.GOARCH }}
 
     - name: Archive binaries
       uses: actions/upload-artifact@v4
