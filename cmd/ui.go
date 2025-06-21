@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -17,7 +18,7 @@ import (
 
 func selectIdentityPrompt(ctx context.Context, list []*configv2.Identity) (*configv2.Identity, error) {
 	if len(list) == 0 {
-		return nil, fmt.Errorf("no identities configured")
+		return nil, errors.New("no identities configured")
 	}
 
 	stringifiedIdentities := identity.IdentitiesAsStrings(list)
@@ -27,7 +28,7 @@ func selectIdentityPrompt(ctx context.Context, list []*configv2.Identity) (*conf
 		return nil, err
 	}
 	if idx < 0 || idx >= len(list) {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no identity selected
 	}
 	return list[idx], nil
 }
@@ -44,11 +45,12 @@ func addMetadataToStringifiedIdentity(ctx context.Context, stringifiedIdentities
 		globalStr = "" // setting global to empty will effectively result in skipping 'global' metadata tag
 	}
 	for idx := range stringifiedIdentities {
-		if stringifiedIdentities[idx] == currentStr && currentStr == globalStr {
+		switch {
+		case stringifiedIdentities[idx] == currentStr && currentStr == globalStr:
 			stringifiedIdentities[idx] += " (current, global)"
-		} else if stringifiedIdentities[idx] == currentStr {
+		case stringifiedIdentities[idx] == currentStr:
 			stringifiedIdentities[idx] += " (current)"
-		} else if stringifiedIdentities[idx] == globalStr {
+		case stringifiedIdentities[idx] == globalStr:
 			stringifiedIdentities[idx] += " (global)"
 		}
 	}
@@ -97,7 +99,7 @@ func selectPrompt_windows(msg string, list []string) (int, error) {
 	}
 	idx, err := strconv.Atoi(strings.TrimSpace(line))
 	if err != nil || idx < 1 || idx > len(list) {
-		return -1, fmt.Errorf("invalid selection")
+		return -1, errors.New("invalid selection")
 	}
 	return idx - 1, nil
 }

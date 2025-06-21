@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,9 +30,9 @@ type VersionEntity interface {
 
 func unmarshallerForVersion(v string) (unmarshaller, error) {
 	if strings.IndexFunc(v, unicode.IsSpace) != -1 {
-		return nil, fmt.Errorf("version cannot contain whitespace characters")
+		return nil, errors.New("version cannot contain whitespace characters")
 	} else if v == "" {
-		return nil, fmt.Errorf("unset version is unsupported")
+		return nil, errors.New("unset version is unsupported")
 	}
 	unmarshaller := versionStringToUnmarshaller[v]
 	if unmarshaller == nil {
@@ -66,7 +67,7 @@ func UnmarshalAndValidateConfig(cfgBytes []byte) (*configv2.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling configuration: %w", err)
 	}
-	SortIdentities(cfg.List)
+	SortIdentities(cfg.GetList())
 	return cfg, nil
 }
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -60,7 +61,7 @@ func setCmdRun(cmd *cobra.Command, r *rootOptions, o *setOptions, args []string)
 		}
 	}
 	if o.onlyAuto {
-		showErr(cmd, fmt.Errorf("no matching identity"))
+		showErr(cmd, errors.New("no matching identity"))
 		return false
 	}
 
@@ -83,7 +84,7 @@ func setCmdRun_auto(ctx context.Context, list []*configv2.Identity) (*configv2.I
 		return nil, err
 	}
 	if i == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no identity selected
 	}
 
 	if err := identity.ApplyIdentity(ctx, i); err != nil {
@@ -98,7 +99,7 @@ func setCmdRun_manual(ctx context.Context, list []*configv2.Identity) (*configv2
 		return nil, err
 	}
 	if i == nil {
-		return nil, fmt.Errorf("no identity selected")
+		return nil, errors.New("no identity selected")
 	}
 
 	if err := identity.ApplyIdentity(ctx, i); err != nil {

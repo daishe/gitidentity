@@ -60,9 +60,8 @@ func userEmail(i *configv2.Identity) string {
 	return valueOf(i, runcmd.GitEmailKey)
 }
 
-func gitNameAndEmailAsIdentity(ctx context.Context, local runcmd.FlagLocalState, global runcmd.FlagGlobalState) (*configv2.Identity, error) {
-	i := &configv2.Identity{Values: make(map[string]string, 2)}
-	err := error(nil)
+func gitNameAndEmailAsIdentity(ctx context.Context, local runcmd.FlagLocalState, global runcmd.FlagGlobalState) (i *configv2.Identity, err error) {
+	i = &configv2.Identity{Values: make(map[string]string, 2)}
 	i.Values[runcmd.GitNameKey], _, err = runcmd.GetGitConfigValue(ctx, runcmd.GitNameKey, local, global)
 	if err != nil {
 		return nil, err
@@ -187,7 +186,7 @@ func FirstAutoMatchingIdentity(ctx context.Context, is []*configv2.Identity, inf
 			return i, nil
 		}
 	}
-	return nil, nil
+	return nil, nil //nolint:nilnil // no matching identity found
 }
 
 func AutoMatchIdentity(ctx context.Context, i *configv2.Identity, info *gitinfo.GitInfo) (bool, error) {
@@ -220,7 +219,7 @@ func matchList(ctx context.Context, ml *configv2.MatchList, info *gitinfo.GitInf
 }
 
 func match(ctx context.Context, m *configv2.Match, info *gitinfo.GitInfo) (verdict bool, err error) {
-	switch s := m.Subject.(type) {
+	switch s := m.GetSubject().(type) {
 	case *configv2.Match_Env:
 		verdict, err = matchEnv(ctx, s.Env)
 	case *configv2.Match_Remote:
@@ -235,10 +234,10 @@ func match(ctx context.Context, m *configv2.Match, info *gitinfo.GitInfo) (verdi
 	return
 }
 
-func matchEnv(ctx context.Context, m *configv2.MatchEnv) (bool, error) {
+func matchEnv(_ context.Context, m *configv2.MatchEnv) (bool, error) {
 	envValue, envExists := os.LookupEnv(m.GetName())
 	if !envExists {
-		return m.To.GetNegate(), nil
+		return m.GetTo().GetNegate(), nil
 	}
 	verdict, err := condition(m.GetTo(), envValue)
 	if err != nil {
@@ -260,7 +259,7 @@ func matchRemote(ctx context.Context, m *configv2.MatchRemote, info *gitinfo.Git
 	return false, nil
 }
 
-func matchSingleRemote(ctx context.Context, m *configv2.MatchRemote, r *gitinfo.Remote) (bool, error) {
+func matchSingleRemote(_ context.Context, m *configv2.MatchRemote, r *gitinfo.Remote) (bool, error) {
 	name, err := condition(m.GetName(), r.Name)
 	if err != nil {
 		return false, fmt.Errorf("matching remote %q name: %w", r.Name, err)
@@ -313,8 +312,7 @@ func getAutoMatchShell() []string {
 	return []string{"sh", "-c"}
 }
 
-func condition(c *configv2.Condition, target string) (bool, error) {
-	verdict := false
+func condition(c *configv2.Condition, target string) (verdict bool, err error) {
 	switch c.GetMode() {
 	case configv2.ConditionMode_CONTAINS:
 		verdict = strings.Contains(target, c.GetValue())
@@ -337,7 +335,7 @@ func condition(c *configv2.Condition, target string) (bool, error) {
 		}
 		verdict = r.MatchString(target)
 	default:
-		return false, fmt.Errorf("unknown condition mode")
+		return false, errors.New("unknown condition mode")
 	}
 
 	if c.GetNegate() {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/daishe/gitidentity/internal/gitinfo"
 )
@@ -33,22 +34,23 @@ const (
 	FlagGlobalOff FlagGlobalState = false
 )
 
-var gitExecutable = "git"
-
-func init() {
-	v, ok := os.LookupEnv("GITIDENTITY_GIT_EXECUTABLE")
-	if !ok {
-		return
-	}
-	gitExecutable = v
-}
+var (
+	gitExecutable     = "git"
+	gitExecutableOnce = sync.Once{}
+)
 
 func GitExecutable() string {
+	gitExecutableOnce.Do(func() {
+		v, ok := os.LookupEnv("GITIDENTITY_GIT_EXECUTABLE")
+		if !ok {
+			return
+		}
+		gitExecutable = v
+	})
 	return gitExecutable
 }
 
-func GitNameAndEmail(ctx context.Context, out map[string]string, local FlagLocalState, global FlagGlobalState) error {
-	err := error(nil)
+func GitNameAndEmail(ctx context.Context, out map[string]string, local FlagLocalState, global FlagGlobalState) (err error) {
 	out["user.name"], _, err = GetGitConfigValue(ctx, "user.name", local, global)
 	if err != nil {
 		return err

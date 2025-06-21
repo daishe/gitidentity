@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -65,7 +66,7 @@ func cloneCmdRun(cmd *cobra.Command, r *rootOptions, o *cloneOptions, args []str
 			return false
 		}
 		if i == nil {
-			showErr(cmd, fmt.Errorf("no identity selected"))
+			showErr(cmd, errors.New("no identity selected"))
 			return false
 		}
 	}

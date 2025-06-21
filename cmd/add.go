@@ -61,8 +61,8 @@ func addCmdRun(cmd *cobra.Command, r *rootOptions, o *addOptions, args []string)
 	i.Values[runcmd.GitNameKey] = o.name
 	i.Values[runcmd.GitEmailKey] = o.email
 
-	cfg.List = append(cfg.List, i)
-	identity.SortIdentities(cfg.List)
+	cfg.List = append(cfg.GetList(), i)
+	identity.SortIdentities(cfg.GetList())
 	if err := identity.WriteConfig(r.config, cfg); err != nil {
 		showErr(cmd, err)
 		return false

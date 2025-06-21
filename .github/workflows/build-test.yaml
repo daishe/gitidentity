@@ -72,8 +72,60 @@ jobs:
       with:
         version: latest
 
-  check_generated_code:
-    name: "Check generated code"
+  check_go_mod_tidy:
+    name: "Check `go mod tidy`"
+
+    runs-on: "ubuntu-latest"
+
+    steps:
+
+    - name: "Checkout"
+      uses: actions/checkout@v3
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.go_version }}
+        cache: true
+
+    - name: "Check if `go mod tidy` has been run properly"
+      run: |
+        make dependencies
+        if ! (git update-index --refresh > /dev/null && git diff-index --quiet HEAD --); then
+          echo 'ERROR: go.mod file is outdated.' >&2
+          echo 'Please update go.mod file by running' >&2
+          echo '    make dependencies' >&2
+          echo 'in the root of the repository before committing changes.' >&2
+        fi
+
+  check_tools_go_mod_tidy:
+    name: "Check tools `go mod tidy`"
+
+    runs-on: "ubuntu-latest"
+
+    steps:
+
+    - name: "Checkout"
+      uses: actions/checkout@v3
+
+    - name: "Setup Go"
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ env.go_version }}
+        cache: true
+
+    - name: "Check if `go mod tidy` has been run properly for tools"
+      run: |
+        make tools/dependencies
+        if ! (git update-index --refresh > /dev/null && git diff-index --quiet HEAD --); then
+          echo 'ERROR: Tools go.mod file is outdated.' >&2
+          echo 'Please update tools go.mod file by running' >&2
+          echo '    make tools/dependencies' >&2
+          echo 'in the root of the repository before committing changes.' >&2
+        fi
+
+  check_proto_generated_code:
+    name: "Check protobuf generated code"
 
     runs-on: "ubuntu-latest"
 
@@ -91,7 +143,7 @@ jobs:
     - name: "Check if proto definition are properly generated"
       run: |
         make proto
-        if [[ ! (git update-index --refresh > /dev/null && git diff-index --quiet HEAD --) ]]; then
+        if ! (git update-index --refresh > /dev/null && git diff-index --quiet HEAD --); then
           echo 'ERROR: Proto definitions are outdated.' >&2
           echo 'Please generate proto definitions by running' >&2
           echo '    make proto' >&2
