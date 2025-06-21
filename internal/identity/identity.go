@@ -86,11 +86,11 @@ func CurrentIdentity(ctx context.Context, includeGlobal bool) (*configv2.Identit
 		return nil, ErrNoCurrentIdentity
 	}
 
-	any := &anypb.Any{}
-	if err := protojson.Unmarshal([]byte(last), any); err != nil {
+	a := &anypb.Any{}
+	if err := protojson.Unmarshal([]byte(last), a); err != nil {
 		return nil, fmt.Errorf("failed to unmarshall value of %s config key", runcmd.GitLastAppliedKey)
 	}
-	i, err := unmarshallIdentityFromAny(any)
+	i, err := unmarshallIdentityFromAny(a)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshall value of %s config key: %w", runcmd.GitLastAppliedKey, err)
 	}
@@ -147,11 +147,11 @@ func ApplyIdentity(ctx context.Context, i *configv2.Identity) error {
 	}
 
 	i.Identifier = IdentityAsString(i)
-	any, err := marshallIdentityIntoAny(i)
+	a, err := marshallIdentityIntoAny(i)
 	if err != nil {
 		return err
 	}
-	if err := runcmd.SetGitConfigValue(ctx, runcmd.GitLastAppliedKey, string(any)); err != nil {
+	if err := runcmd.SetGitConfigValue(ctx, runcmd.GitLastAppliedKey, string(a)); err != nil {
 		return err
 	}
 	for key, value := range i.GetValues() {
@@ -164,12 +164,12 @@ func ApplyIdentity(ctx context.Context, i *configv2.Identity) error {
 
 func ApplyIdentityAsArgs(ctx context.Context, i *configv2.Identity) ([]string, error) {
 	i.Identifier = IdentityAsString(i)
-	any, err := marshallIdentityIntoAny(i)
+	a, err := marshallIdentityIntoAny(i)
 	if err != nil {
 		return nil, err
 	}
 	args := make([]string, 0, len(i.GetValues())+1)
-	args = append(args, fmt.Sprintf("--config=%s=%s", runcmd.GitLastAppliedKey, any))
+	args = append(args, fmt.Sprintf("--config=%s=%s", runcmd.GitLastAppliedKey, a))
 	for k, v := range i.GetValues() {
 		args = append(args, fmt.Sprintf("--config=%s=%s", k, v))
 	}

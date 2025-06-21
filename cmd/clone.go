@@ -118,7 +118,7 @@ func cloneCmd_inferRemoteNameFromArg(args []string, idx int) (string, bool) {
 	return "", false
 }
 
-func recoverArgValue(name string, shorthand string, args []string, idx int) (string, bool) {
+func recoverArgValue(name, shorthand string, args []string, idx int) (string, bool) {
 	if idx < 0 || idx >= len(args) {
 		return "", false // argument does not exists
 	}

@@ -51,7 +51,7 @@ jobs:
       matrix:
         os:
         - ubuntu-latest
-        - windows-latest
+        # - windows-latest # Reenable windows linting when issue with gofmt is resolved
         - macOS-latest
 
     runs-on: ${{ matrix.os }}
@@ -68,8 +68,9 @@ jobs:
         cache: true
 
     - name: "Lint Go code"
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v8
       with:
+        verify: true
         version: latest
 
   check_go_mod_tidy:

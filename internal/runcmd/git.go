@@ -82,7 +82,7 @@ func GetGitConfigValue(ctx context.Context, value string, local FlagLocalState, 
 	return strings.TrimSpace(string(out)), true, nil
 }
 
-func SetGitConfigValue(ctx context.Context, key string, to string) error {
+func SetGitConfigValue(ctx context.Context, key, to string) error {
 	if to == "" {
 		return UnsetGitConfigValue(ctx, key)
 	}

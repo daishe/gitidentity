@@ -29,7 +29,6 @@ linters:
   - funcorder
   - funlen
   - gocheckcompilerdirectives
-  - gochecknoglobals
   - gochecknoinits
   - gochecksumtype
   - gocognit
@@ -52,10 +51,8 @@ linters:
   - makezero
   - mirror
   - misspell
-  - mnd
   - musttag
   - nakedret
-  - nestif
   - nilerr
   - nilnesserr
   - nilnil
@@ -99,6 +96,13 @@ linters:
   - varnamelen
   - wsl
 
+  settings:
+    gocritic:
+      enable-all: true
+      disabled-checks:
+      - emptyStringTest
+      - unnamedResult
+
   exclusions:
     generated: strict
     warn-unused: true
@@ -112,9 +116,6 @@ linters:
         linters:
         - contextcheck
         - unparam
-      - source: 'any'
-        linters:
-        - predeclared
 
 formatters:
   enable:

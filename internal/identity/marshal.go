@@ -118,11 +118,11 @@ func WriteConfig(path string, cfg *configv2.Config) error {
 		return fmt.Errorf("marshalling configuration: %w", err)
 	}
 	if patentDir := filepath.Dir(path); patentDir != "" {
-		if err := os.MkdirAll(patentDir, 0755); err != nil {
+		if err := os.MkdirAll(patentDir, 0o755); err != nil {
 			return fmt.Errorf("making directory for user configuration: %w", err)
 		}
 	}
-	if err := osSafeFileWrite(path, cfgBytes, 0600); err != nil {
+	if err := osSafeFileWrite(path, cfgBytes, 0o600); err != nil {
 		return fmt.Errorf("writing to configuration file: %w", err)
 	}
 	return nil
@@ -145,15 +145,15 @@ func MarshalIdentity(i *configv2.Identity) ([]byte, error) {
 }
 
 func marshallIdentityIntoAny(i *configv2.Identity) ([]byte, error) {
-	any, err := anypb.New(i)
+	a, err := anypb.New(i)
 	if err != nil {
 		return nil, err
 	}
-	return marshalPacked(any)
+	return marshalPacked(a)
 }
 
-func unmarshallIdentityFromAny(any *anypb.Any) (*configv2.Identity, error) {
-	m, err := any.UnmarshalNew()
+func unmarshallIdentityFromAny(a *anypb.Any) (*configv2.Identity, error) {
+	m, err := a.UnmarshalNew()
 	if err != nil {
 		return nil, err
 	}
@@ -163,5 +163,5 @@ func unmarshallIdentityFromAny(any *anypb.Any) (*configv2.Identity, error) {
 	case *configv2.Identity:
 		return i, nil
 	}
-	return nil, fmt.Errorf("unknown type %q", any.GetTypeUrl())
+	return nil, fmt.Errorf("unknown type %q", a.GetTypeUrl())
 }

@@ -10,6 +10,7 @@ dependencies: go.mod go.sum
 
 .PHONY: lint
 lint: bin/golangci-lint
+	bin/golangci-lint config verify
 	bin/golangci-lint run
 
 .PHONY: test
