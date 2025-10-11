@@ -14,6 +14,7 @@ import (
 
 	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/gitinfo"
+	"github.com/daishe/gitidentity/internal/logging"
 	"github.com/daishe/gitidentity/internal/runcmd"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -139,6 +140,7 @@ func UnsetCurrentIdentity(ctx context.Context) error {
 }
 
 func ApplyIdentity(ctx context.Context, i *configv2.Identity) error {
+	logging.Log.Printf("applying identity %q to repository config", i.GetIdentifier())
 	if err := UnsetCurrentIdentity(ctx); err != nil {
 		return err
 	}
@@ -163,6 +165,7 @@ func ApplyIdentity(ctx context.Context, i *configv2.Identity) error {
 }
 
 func ApplyIdentityAsArgs(ctx context.Context, i *configv2.Identity) ([]string, error) {
+	logging.Log.Printf("applying identity %q as arguments", i.GetIdentifier())
 	i.Identifier = IdentityAsString(i)
 	a, err := marshallIdentityIntoAny(i)
 	if err != nil {
@@ -177,15 +180,18 @@ func ApplyIdentityAsArgs(ctx context.Context, i *configv2.Identity) ([]string, e
 }
 
 func FirstAutoMatchingIdentity(ctx context.Context, is []*configv2.Identity, info *gitinfo.GitInfo) (*configv2.Identity, error) {
+	logging.Log.Printf("looking for first matching identity")
 	for _, i := range is {
 		matched, err := AutoMatchIdentity(ctx, i, info)
 		if err != nil {
 			return nil, err
 		}
 		if matched {
+			logging.Log.Printf("first matching identity found %q", i.GetIdentifier())
 			return i, nil
 		}
 	}
+	logging.Log.Printf("no matching identity found")
 	return nil, nil //nolint:nilnil // no matching identity found
 }
 
@@ -196,9 +202,11 @@ func AutoMatchIdentity(ctx context.Context, i *configv2.Identity, info *gitinfo.
 			return false, fmt.Errorf("identity %q: %w", i.GetIdentifier(), err)
 		}
 		if verdict {
+			logging.Log.Printf("matching identity: identity %q do not matches", i.GetIdentifier())
 			return true, nil
 		}
 	}
+	logging.Log.Printf("matching identity: identity %q matches", i.GetIdentifier())
 	return false, nil
 }
 
