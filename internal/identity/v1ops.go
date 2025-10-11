@@ -3,8 +3,8 @@ package identity
 import (
 	"google.golang.org/protobuf/encoding/protojson"
 
-	configv1 "github.com/daishe/gitidentity/config/v1"
-	configv2 "github.com/daishe/gitidentity/config/v2"
+	configv1 "github.com/daishe/gitidentity/api/gitidentity/config/v1"
+	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
 )
 
 func unmarshalConfigV1(cfgBytes []byte) (*configv2.Config, error) {

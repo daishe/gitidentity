@@ -2,9 +2,12 @@ name: "Release"
 
 on:
   push:
-    tags: # run when release has been tagged, however ignore non-official semver tags (release candidates, etc)
+    tags: # run when release has been tagged
     - "v[0-9]+.[0-9]+.[0-9]+"
     - "!v[0-9]+.[0-9]+.[0-9]+-*"
+
+permissions:
+  contents: write
 
 jobs:
   build-test:
@@ -30,10 +33,12 @@ jobs:
         path: dist
 
     - name: "Release"
-      uses: "marvinpinto/action-automatic-releases@latest"
+      uses: softprops/action-gh-release@v2
       with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        token: "${{ secrets.GITHUB_TOKEN }}"
         prerelease: false
+        generate_release_notes: true
+        fail_on_unmatched_files: true
         files: |
           LICENSE
           dist/*/*

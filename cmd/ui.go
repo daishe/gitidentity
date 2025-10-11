@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
-	configv2 "github.com/daishe/gitidentity/config/v2"
+	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/identity"
 	"github.com/manifoldco/promptui"
 )

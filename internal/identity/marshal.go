@@ -12,8 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	configv1 "github.com/daishe/gitidentity/config/v1"
-	configv2 "github.com/daishe/gitidentity/config/v2"
+	configv1 "github.com/daishe/gitidentity/api/gitidentity/config/v1"
+	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/logging"
 )
 

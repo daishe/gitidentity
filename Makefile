@@ -10,7 +10,7 @@ GOOS=$(1) GOARCH=$(2) go build -ldflags="-X 'main.Version=$(GIT_TAG)' -X 'main.C
 endef
 
 .PHONY: all
-all: lint test build
+all: lint test dist-all
 
 .PHONY: clean
 clean: dist-clean tools-clean
@@ -29,6 +29,9 @@ lint: bin/golangci-lint
 test: dependencies
 	go test -timeout 5m ./...
 
+.PHONY: build
+build: dist/gitidentity
+
 .PHONY: dist-all
 dist-all: build dist/gitidentity-linux-amd64 dist/gitidentity-linux-arm64 dist/gitidentity-windows-amd64.exe dist/gitidentity-windows-arm64.exe dist/gitidentity-darwin-amd64 dist/gitidentity-darwin-arm64
 
@@ -36,8 +39,7 @@ dist-all: build dist/gitidentity-linux-amd64 dist/gitidentity-linux-arm64 dist/g
 dist-clean:
 	rm -rf dist
 
-.PHONY: build
-build: $(GO_SOURCE) dependencies
+dist/gitidentity: $(GO_SOURCE) dependencies
 	$(call goBuild,,,dist/gitidentity)
 
 dist/gitidentity-linux-amd64: $(GO_SOURCE) dependencies
@@ -65,7 +67,7 @@ dist/gitidentity-windows-amd64: dist/gitidentity-windows-amd64.exe
 dist/gitidentity-windows-arm64: dist/gitidentity-windows-arm64.exe
 
 .PHONY: tools-all
-tools-all: bin/buf bin/golangci-lint bin/protoc-gen-go
+tools-all: bin/buf bin/golangci-lint bin/protoc-gen-buf-breaking bin/protoc-gen-buf-lint bin/protoc-gen-go
 
 .PHONY: tools-clean
 tools-clean:
@@ -81,9 +83,16 @@ bin/buf: tools/dependencies
 bin/golangci-lint: tools/dependencies
 	cd tools && go build -o ../bin/golangci-lint github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
+bin/protoc-gen-buf-breaking: tools/dependencies
+	cd tools && go build -o ../bin/protoc-gen-buf-breaking github.com/bufbuild/buf/cmd/protoc-gen-buf-breaking
+
+bin/protoc-gen-buf-lint: tools/dependencies
+	cd tools && go build -o ../bin/protoc-gen-buf-lint github.com/bufbuild/buf/cmd/protoc-gen-buf-lint
+
 bin/protoc-gen-go: tools/dependencies
 	cd tools && go build -o ../bin/protoc-gen-go google.golang.org/protobuf/cmd/protoc-gen-go
 
 .PHONY: proto
 proto: bin/buf bin/protoc-gen-go
-	PATH="$(BIN_DIR):$$PATH" go generate -tags proto ./...
+	PATH="$(BIN_DIR):$$PATH" buf lint
+	PATH="$(BIN_DIR):$$PATH" buf generate

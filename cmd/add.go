@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	configv2 "github.com/daishe/gitidentity/config/v2"
+	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/identity"
 	"github.com/daishe/gitidentity/internal/runcmd"
 )

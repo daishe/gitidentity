@@ -62,10 +62,10 @@ message Condition {
 }
 
 enum ConditionMode {
-  CONTAINS = 0; // comparison mode indicating, that a given string should contain some value
-  PREFIX = 1; // comparison mode indicating, that a given string should have some value prefix
-  SUFFIX = 2; // comparison mode indicating, that a given string should have some value suffix
-  FULL = 3; // comparison mode indicating, that a given string should equal to some value fully
-  SHELL_PATTERN = 4; // comparison mode indicating, that a given string should match some value containing a shell patter
-  REGEXP = 5; // comparison mode indicating, that a given string should match some value containing a regular expression
+  CONDITION_MODE_UNSPECIFIED = 0; // no comparison mode specified, it indicates that a given string should contain some value
+  CONDITION_MODE_PREFIX = 1; // comparison mode indicating, that a given string should have some value prefix
+  CONDITION_MODE_SUFFIX = 2; // comparison mode indicating, that a given string should have some value suffix
+  CONDITION_MODE_FULL = 3; // comparison mode indicating, that a given string should equal to some value fully
+  CONDITION_MODE_SHELL_PATTERN = 4; // comparison mode indicating, that a given string should match some value containing a shell patter
+  CONDITION_MODE_REGEXP = 5; // comparison mode indicating, that a given string should match some value containing a regular expression
 }

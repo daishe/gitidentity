@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	configv2 "github.com/daishe/gitidentity/config/v2"
+	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
 	"github.com/daishe/gitidentity/internal/gitinfo"
 	"github.com/daishe/gitidentity/internal/runcmd"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -314,21 +314,21 @@ func getAutoMatchShell() []string {
 
 func condition(c *configv2.Condition, target string) (verdict bool, err error) {
 	switch c.GetMode() {
-	case configv2.ConditionMode_CONTAINS:
+	case configv2.ConditionMode_CONDITION_MODE_UNSPECIFIED:
 		verdict = strings.Contains(target, c.GetValue())
-	case configv2.ConditionMode_PREFIX:
+	case configv2.ConditionMode_CONDITION_MODE_PREFIX:
 		verdict = strings.HasPrefix(target, c.GetValue())
-	case configv2.ConditionMode_SUFFIX:
+	case configv2.ConditionMode_CONDITION_MODE_SUFFIX:
 		verdict = strings.HasSuffix(target, c.GetValue())
-	case configv2.ConditionMode_FULL:
+	case configv2.ConditionMode_CONDITION_MODE_FULL:
 		verdict = target == c.GetValue()
-	case configv2.ConditionMode_SHELL_PATTERN:
+	case configv2.ConditionMode_CONDITION_MODE_SHELL_PATTERN:
 		v, err := path.Match(c.GetValue(), target)
 		if err != nil {
 			return false, fmt.Errorf("matching shell pattern: %w", err)
 		}
 		verdict = v
-	case configv2.ConditionMode_REGEXP:
+	case configv2.ConditionMode_CONDITION_MODE_REGEXP:
 		r, err := regexp.Compile(c.GetValue())
 		if err != nil {
 			return false, fmt.Errorf("compiling regexp: %w", err)
