@@ -11,8 +11,9 @@ import (
 )
 
 type rootOptions struct {
-	config  string
-	logging bool
+	config    string
+	changeDir string
+	logging   bool
 }
 
 func rootCmd() *cobra.Command {
@@ -27,11 +28,19 @@ func rootCmd() *cobra.Command {
 			if o.logging {
 				logging.Log.SetOutput(cmd.ErrOrStderr())
 			}
+			if o.changeDir != "" {
+				logging.Log.Printf("changing directory to %q", o.changeDir)
+				if err := os.Chdir(o.changeDir); err != nil {
+					showErr(cmd, err)
+					os.Exit(1)
+				}
+			}
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(&o.config, "config", defaultConfigPath(), "path to user configuration file")
 	cmd.PersistentFlags().BoolVar(&o.logging, "debug", false, "dump debug logs to stderr")
+	cmd.PersistentFlags().StringVarP(&o.changeDir, "change-directory", "C", "", "run as if gitidentiry was started in the provided path, instead of the current working directory")
 
 	cmd.AddCommand(addCmd(o))
 	cmd.AddCommand(currentCmd(o))
