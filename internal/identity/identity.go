@@ -202,11 +202,11 @@ func AutoMatchIdentity(ctx context.Context, i *configv2.Identity, info *gitinfo.
 			return false, fmt.Errorf("identity %q: %w", i.GetIdentifier(), err)
 		}
 		if verdict {
-			logging.Log.Printf("matching identity: identity %q do not matches", i.GetIdentifier())
+			logging.Log.Printf("matching identity: identity %q matches", i.GetIdentifier())
 			return true, nil
 		}
 	}
-	logging.Log.Printf("matching identity: identity %q matches", i.GetIdentifier())
+	logging.Log.Printf("matching identity: identity %q do not matches", i.GetIdentifier())
 	return false, nil
 }
 
