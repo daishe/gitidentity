@@ -12,9 +12,6 @@ on:
 permissions:
   contents: read
 
-env:
-  go_version: "^1.24"
-
 jobs:
   test:
     name: "Test [${{ matrix.os }}]"
@@ -32,13 +29,13 @@ jobs:
     steps:
 
     - name: "Checkout"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: "Setup Go"
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v6
       with:
-        go-version: ${{ env.go_version }}
-        cache: true
+        go-version-file: go.mod
+        cache-dependency-path: "**/*.sum"
 
     - name: "Test project"
       run: make test
@@ -59,13 +56,13 @@ jobs:
     steps:
 
     - name: "Checkout"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: "Setup Go"
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v6
       with:
-        go-version: ${{ env.go_version }}
-        cache: true
+        go-version-file: go.mod
+        cache-dependency-path: "**/*.sum"
 
     - name: "Lint Go code (action)"
       uses: golangci/golangci-lint-action@v8
@@ -76,21 +73,21 @@ jobs:
     - name: "Lint Go code (makefile)"
       run: make lint
 
-  check_go_mod_tidy:
-    name: "Check `go mod tidy`"
+  check_repository_state:
+    name: "Check repository state"
 
     runs-on: "ubuntu-latest"
 
     steps:
 
     - name: "Checkout"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: "Setup Go"
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v6
       with:
-        go-version: ${{ env.go_version }}
-        cache: true
+        go-version-file: go.mod
+        cache-dependency-path: "**/*.sum"
 
     - name: "Check if `go mod tidy` has been run properly"
       run: |
@@ -102,22 +99,6 @@ jobs:
           echo 'in the root of the repository before committing changes.' >&2
         fi
 
-  check_tools_go_mod_tidy:
-    name: "Check tools `go mod tidy`"
-
-    runs-on: "ubuntu-latest"
-
-    steps:
-
-    - name: "Checkout"
-      uses: actions/checkout@v3
-
-    - name: "Setup Go"
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.go_version }}
-        cache: true
-
     - name: "Check if `go mod tidy` has been run properly for tools"
       run: |
         (cd tools && go mod tidy)
@@ -127,22 +108,6 @@ jobs:
           echo '    (cd tools && go mod tidy)' >&2
           echo 'in the root of the repository before committing changes.' >&2
         fi
-
-  check_proto_generated_code:
-    name: "Check protobuf generated code"
-
-    runs-on: "ubuntu-latest"
-
-    steps:
-
-    - name: "Checkout"
-      uses: actions/checkout@v3
-
-    - name: "Setup Go"
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ env.go_version }}
-        cache: true
 
     - name: "Check if proto definition are properly generated"
       run: |
@@ -173,13 +138,13 @@ jobs:
     steps:
 
     - name: "Checkout"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v5
 
     - name: "Setup Go"
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v6
       with:
-        go-version: ${{ env.go_version }}
-        cache: true
+        go-version-file: go.mod
+        cache-dependency-path: "**/*.sum"
 
     - name: "Extract version"
       id: get_version
