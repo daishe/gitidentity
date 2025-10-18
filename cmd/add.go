@@ -41,7 +41,7 @@ func addCmd(r *rootOptions) *cobra.Command {
 }
 
 func addCmdRun(cmd *cobra.Command, r *rootOptions, o *addOptions, args []string) bool {
-	cfg, err := identity.ReadConfig(r.config)
+	cfg, format, err := identity.ReadConfig(r.config)
 	if errors.Is(err, os.ErrNotExist) {
 		cfg, err = identity.EmptyConfig(), nil
 	}
@@ -63,7 +63,7 @@ func addCmdRun(cmd *cobra.Command, r *rootOptions, o *addOptions, args []string)
 
 	cfg.List = append(cfg.GetList(), i)
 	identity.SortIdentities(cfg.GetList())
-	if err := identity.WriteConfig(r.config, cfg); err != nil {
+	if err := identity.WriteConfig(r.config, cfg, format); err != nil {
 		showErr(cmd, err)
 		return false
 	}

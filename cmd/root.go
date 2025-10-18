@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/daishe/gitidentity/internal/logging"
 	"github.com/spf13/cobra"
@@ -38,7 +37,7 @@ func rootCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&o.config, "config", defaultConfigPath(), "path to user configuration file")
+	cmd.PersistentFlags().StringVar(&o.config, "config", "", "path to user configuration file")
 	cmd.PersistentFlags().BoolVar(&o.logging, "debug", false, "dump debug logs to stderr")
 	cmd.PersistentFlags().StringVarP(&o.changeDir, "change-directory", "C", "", "run as if gitidentiry was started in the provided path, instead of the current working directory")
 
@@ -49,14 +48,6 @@ func rootCmd() *cobra.Command {
 	cmd.AddCommand(cloneCmd(o))
 	cmd.AddCommand(versionCmd(o))
 	return cmd
-}
-
-func defaultConfigPath() string {
-	p, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(p, ".config", "gitidentity", "config.json")
 }
 
 func showErr(cmd *cobra.Command, msg interface{}) {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -11,8 +12,8 @@ import (
 )
 
 type currentOptions struct {
-	all  bool
-	json bool
+	all    bool
+	format string
 }
 
 func currentCmd(r *rootOptions) *cobra.Command {
@@ -30,7 +31,7 @@ func currentCmd(r *rootOptions) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&o.all, "all", false, "include all Git configs, not only the local one")
-	cmd.Flags().BoolVar(&o.json, "json", false, "use JSON output that includes all information")
+	cmd.Flags().StringVar(&o.format, "format", "short", "output format, possible values are: short, JSON or YAML")
 	return cmd
 }
 
@@ -44,12 +45,21 @@ func currentCmdRun(cmd *cobra.Command, r *rootOptions, o *currentOptions, args [
 		return false
 	}
 
-	if !o.json {
+	var format identity.Format
+	switch strings.ToLower(o.format) {
+	case "short":
 		fmt.Fprintln(cmd.OutOrStdout(), identity.IdentityAsString(i))
 		return true
+	case "json":
+		format = identity.FormatJSON
+	case "yaml":
+		format = identity.FormatYAML
+	default:
+		showErr(cmd, fmt.Errorf("unknown output format %q", o.format))
+		return false
 	}
 
-	out, err := identity.MarshalIdentity(i)
+	out, err := identity.MarshalIdentity(i, format)
 	if err != nil {
 		showErr(cmd, err)
 		return false

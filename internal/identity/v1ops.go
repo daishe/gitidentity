@@ -1,7 +1,7 @@
 package identity
 
 import (
-	"google.golang.org/protobuf/encoding/protojson"
+	"buf.build/go/protoyaml"
 
 	configv1 "github.com/daishe/gitidentity/api/gitidentity/config/v1"
 	configv2 "github.com/daishe/gitidentity/api/gitidentity/config/v2"
@@ -9,7 +9,7 @@ import (
 
 func unmarshalConfigV1(cfgBytes []byte) (*configv2.Config, error) {
 	cfg := &configv1.Config{}
-	if err := (protojson.UnmarshalOptions{AllowPartial: false, DiscardUnknown: false}).Unmarshal(cfgBytes, cfg); err != nil {
+	if err := (protoyaml.UnmarshalOptions{AllowPartial: false, DiscardUnknown: false}).Unmarshal(cfgBytes, cfg); err != nil {
 		return nil, err
 	}
 	return fromConfigV1ToConfigV2(cfg), nil

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"buf.build/go/protoyaml"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -46,45 +47,86 @@ func ValidateVersionEntity(ve VersionEntity) error {
 	return err
 }
 
-func UnmarshalAndValidateVersionEntity(p []byte) (VersionEntity, error) {
+func UnmarshalAndValidateVersionEntity(p []byte) (VersionEntity, Format, error) {
 	ve := &configv2.VersionEntity{}
-	if err := (protojson.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(p, ve); err != nil {
-		return nil, fmt.Errorf("parsing version: %w", err)
+	err := (protojson.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(p, ve)
+	if err == nil {
+		return ve, FormatJSON, ValidateVersionEntity(ve)
 	}
-	return ve, ValidateVersionEntity(ve)
+	err = (protoyaml.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(p, ve)
+	if err == nil {
+		return ve, FormatYAML, ValidateVersionEntity(ve)
+	}
+	return nil, FormatUnknown, fmt.Errorf("parsing version: %w", err)
 }
 
-func UnmarshalAndValidateConfig(cfgBytes []byte) (*configv2.Config, error) {
-	ev, err := UnmarshalAndValidateVersionEntity(cfgBytes)
+func UnmarshalAndValidateConfig(cfgBytes []byte) (*configv2.Config, Format, error) {
+	ev, format, err := UnmarshalAndValidateVersionEntity(cfgBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling configuration: %w", err)
+		return nil, format, fmt.Errorf("unmarshalling configuration: %w", err)
 	}
 	unmarshaller, err := unmarshallerForVersion(ev.GetVersion())
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling configuration: %w", err)
+		return nil, format, fmt.Errorf("unmarshalling configuration: %w", err)
 	}
 	cfg, err := unmarshaller(cfgBytes)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling configuration: %w", err)
+		return nil, format, fmt.Errorf("unmarshalling configuration: %w", err)
 	}
 	SortIdentities(cfg.GetList())
-	return cfg, nil
+	return cfg, format, nil
 }
 
-func ReadConfig(path string) (*configv2.Config, error) {
-	cfgBytes, err := os.ReadFile(path)
+func defaultConfigPaths() []string {
+	p, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	return []string{
+		filepath.Join(p, ".config", "gitidentity", "config.json"),
+		filepath.Join(p, ".config", "gitidentity", "config.yaml"),
+		filepath.Join(p, ".config", "gitidentity", "config.yml"),
+	}
+}
+
+func readConfigBytes(path string) ([]byte, error) {
+	tryPaths := []string(nil)
+	if path == "" {
+		tryPaths = defaultConfigPaths()
+	} else {
+		tryPaths = append(tryPaths, path)
+	}
+	firstErr := error(nil)
+	for _, p := range tryPaths {
+		cfgBytes, err := os.ReadFile(p)
+		if err == nil {
+			return cfgBytes, nil
+		}
+		logging.Log.Printf("config %q reading attempt failed: %v", path, err)
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	if firstErr == nil { // tryPaths is empty
+		return nil, errors.New("unable to determine the location of the configuration file")
+	}
+	return nil, firstErr
+}
+
+func ReadConfig(path string) (*configv2.Config, Format, error) {
+	cfgBytes, err := readConfigBytes(path)
 	if err != nil {
 		logging.Log.Printf("config %q reading failed: %v", path, err)
-		return nil, fmt.Errorf("reading configuration file: %w", err)
+		return nil, FormatUnknown, fmt.Errorf("reading configuration file: %w", err)
 	}
 	logging.Log.Printf("config %q read", path)
-	cfg, err := UnmarshalAndValidateConfig(cfgBytes)
+	cfg, format, err := UnmarshalAndValidateConfig(cfgBytes)
 	if err != nil {
 		logging.Log.Printf("config %q read, unmarshalling or validation failed: %v", path, err)
-		return nil, err
+		return nil, format, err
 	}
 	logging.Log.Printf("config %q read, version %s, #%d numer of entries", path, cfg.GetVersion(), len(cfg.GetList()))
-	return cfg, err
+	return cfg, format, err
 }
 
 func EmptyConfig() *configv2.Config {
@@ -111,9 +153,9 @@ func osSafeFileWrite(name string, data []byte, perm os.FileMode) error {
 	return os.Rename(tmpName, name) // atomic on most oses
 }
 
-func WriteConfig(path string, cfg *configv2.Config) error {
+func WriteConfig(path string, cfg *configv2.Config, format Format) error {
 	logging.Log.Printf("writing config to %q, version %s, #%d numer of entries", path, cfg.GetVersion(), len(cfg.GetList()))
-	cfgBytes, err := MarshalConfig(cfg)
+	cfgBytes, err := MarshalConfig(cfg, format)
 	if err != nil {
 		return fmt.Errorf("marshalling configuration: %w", err)
 	}
@@ -128,20 +170,36 @@ func WriteConfig(path string, cfg *configv2.Config) error {
 	return nil
 }
 
-func marshal(m proto.Message) ([]byte, error) {
-	return protojson.MarshalOptions{AllowPartial: false, Multiline: true, Indent: "  "}.Marshal(m)
+type Format string
+
+const (
+	FormatUnknown Format = "unknown"
+	FormatJSON    Format = "json"
+	FormatYAML    Format = "yaml"
+)
+
+func marshal(m proto.Message, format Format) ([]byte, error) {
+	switch format {
+	case FormatJSON:
+		return protojson.MarshalOptions{AllowPartial: false, Multiline: true, Indent: "  "}.Marshal(m)
+	case FormatYAML:
+		return protoyaml.MarshalOptions{AllowPartial: false, Indent: 2}.Marshal(m)
+	case FormatUnknown:
+		break
+	}
+	return nil, fmt.Errorf("unknown identity marshalling format %q", format)
 }
 
 func marshalPacked(m proto.Message) ([]byte, error) {
 	return protojson.MarshalOptions{AllowPartial: false}.Marshal(m)
 }
 
-func MarshalConfig(cfg *configv2.Config) ([]byte, error) {
-	return marshal(cfg)
+func MarshalConfig(cfg *configv2.Config, format Format) ([]byte, error) {
+	return marshal(cfg, format)
 }
 
-func MarshalIdentity(i *configv2.Identity) ([]byte, error) {
-	return marshal(i)
+func MarshalIdentity(i *configv2.Identity, format Format) ([]byte, error) {
+	return marshal(i, format)
 }
 
 func marshallIdentityIntoAny(i *configv2.Identity) ([]byte, error) {

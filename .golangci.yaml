@@ -116,6 +116,11 @@ linters:
         linters:
         - contextcheck
         - unparam
+      - path: '.*_test\.go'
+        linters:
+        - dupl
+        - funcorder
+        - thelper
 
 formatters:
   enable:
