@@ -143,7 +143,7 @@ func MergeExtraConfigs(root *configv2.Config) error {
 		if err != nil {
 			return err
 		}
-		root.List = append(root.List, cfg.List...)
+		root.List = append(root.List, cfg.GetList()...)
 	}
 	return nil
 }
