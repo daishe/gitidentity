@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strconv"
@@ -81,6 +82,12 @@ func selectPrompt(msg string, list []string) (int, error) {
 
 	idx, _, err := component.Run()
 	if err != nil {
+		if errors.Is(err, promptui.ErrInterrupt) {
+			os.Exit(1)
+		}
+		if errors.Is(err, promptui.ErrEOF) {
+			err = io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 	return idx, nil
