@@ -89,6 +89,10 @@ func defaultConfigPaths() []string {
 	}
 }
 
+func extraConfigPaths() []string {
+	return strings.Split(os.Getenv("GITIDENTITY_EXTRA_CONFIGS"), string(os.PathListSeparator))
+}
+
 func readConfigBytes(path string) ([]byte, error) {
 	tryPaths := []string(nil)
 	if path == "" {
@@ -127,6 +131,21 @@ func ReadConfig(path string) (*configv2.Config, Format, error) {
 	}
 	logging.Log.Printf("config %q read, version %s, #%d numer of entries", path, cfg.GetVersion(), len(cfg.GetList()))
 	return cfg, format, err
+}
+
+func MergeExtraConfigs(root *configv2.Config) error {
+	extraPaths := extraConfigPaths()
+	for _, path := range extraPaths {
+		if path == "" {
+			continue
+		}
+		cfg, _, err := ReadConfig(path)
+		if err != nil {
+			return err
+		}
+		root.List = append(root.List, cfg.List...)
+	}
+	return nil
 }
 
 func EmptyConfig() *configv2.Config {

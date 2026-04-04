@@ -43,6 +43,11 @@ func cloneCmdRun(cmd *cobra.Command, r *rootOptions, o *cloneOptions, args []str
 		return false
 	}
 
+	if err := identity.MergeExtraConfigs(cfg); err != nil {
+		showErr(cmd, err)
+		return false
+	}
+
 	remoteName := cloneCmd_inferRemoteName(cmd.Context(), args)
 	gi := &gitinfo.GitInfo{}
 	for _, a := range args {

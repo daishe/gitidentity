@@ -49,6 +49,11 @@ func setCmdRun(cmd *cobra.Command, r *rootOptions, o *setOptions, args []string)
 		return false
 	}
 
+	if err := identity.MergeExtraConfigs(cfg); err != nil {
+		showErr(cmd, err)
+		return false
+	}
+
 	if !o.noAuto {
 		i, err := setCmdRun_auto(cmd.Context(), cfg.GetList())
 		if err != nil {
