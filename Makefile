@@ -16,6 +16,18 @@ all: lint test dist-all
 clean: dist-clean tools-clean
 	rm -rf dependencies
 
+.PHONY: tidy
+tidy:
+	go mod tidy
+	cd tools && go mod tidy
+
+.PHONY: update
+update:
+	go get -t -u all
+	go mod tidy
+	cd tools && go list -f '{{if and (not .Indirect) (not .Main)}}{{.Path}}{{end}}' -m all | xargs go get --tags tools -t -u
+	cd tools && go mod tidy
+
 dependencies: go.mod go.sum
 	go mod download
 	touch dependencies
@@ -32,8 +44,8 @@ test: dependencies
 .PHONY: build
 build: dist/gitidentity
 
-.PHONY: dist-all
-dist-all: build dist/gitidentity-linux-amd64 dist/gitidentity-linux-arm64 dist/gitidentity-windows-amd64.exe dist/gitidentity-windows-arm64.exe dist/gitidentity-darwin-amd64 dist/gitidentity-darwin-arm64
+.PHONY: dist
+dist: build dist/gitidentity-linux-amd64 dist/gitidentity-linux-arm64 dist/gitidentity-windows-amd64.exe dist/gitidentity-windows-arm64.exe dist/gitidentity-darwin-amd64 dist/gitidentity-darwin-arm64
 
 .PHONY: dist-clean
 dist-clean:
@@ -66,8 +78,8 @@ dist/gitidentity-windows-amd64: dist/gitidentity-windows-amd64.exe
 .PHONY: dist/gitidentity-windows-arm64
 dist/gitidentity-windows-arm64: dist/gitidentity-windows-arm64.exe
 
-.PHONY: tools-all
-tools-all: bin/buf bin/golangci-lint bin/protoc-gen-buf-breaking bin/protoc-gen-buf-lint bin/protoc-gen-go
+.PHONY: tools
+tools: bin/buf bin/golangci-lint bin/protoc-gen-buf-breaking bin/protoc-gen-buf-lint bin/protoc-gen-go
 
 .PHONY: tools-clean
 tools-clean:
