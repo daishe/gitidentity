@@ -10,7 +10,7 @@ GOOS=$(1) GOARCH=$(2) go build -ldflags="-X 'main.Version=$(GIT_TAG)' -X 'main.C
 endef
 
 .PHONY: all
-all: lint test dist-all
+all: lint test dist
 
 .PHONY: clean
 clean: dist-clean tools-clean
