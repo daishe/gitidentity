@@ -216,7 +216,7 @@ func isWithinGitWorkTree(dir string) (bool, error) {
 	for {
 		is, err := isGitWorkTreeRoot(dir)
 		if err != nil {
-			return false, fmt.Errorf("checking if a directory %q is located withing git work tree: %w", dir, err)
+			return false, fmt.Errorf("checking if a directory %q is located within git work tree: %w", dir, err)
 		}
 		if is {
 			return true, nil

@@ -62,7 +62,6 @@ linters:
   - paralleltest
   - perfsprint
   - prealloc
-  - predeclared
   - protogetter
   - reassign
   - recvcheck
@@ -92,6 +91,7 @@ linters:
   - lll
   - mnd # complains too much about file mode numbers
   - nestif
+  - predeclared
   - revive
   - varnamelen
   - wsl
