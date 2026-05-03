@@ -37,7 +37,7 @@ func cloneCmd(r *rootOptions) *cobra.Command {
 }
 
 func cloneCmdRun(cmd *cobra.Command, r *rootOptions, o *cloneOptions, args []string) bool {
-	cfg, err := identity.ReadConfig(r.config, identity.WithExtraConfigs(true), identity.WithParentDirsConfigs(true))
+	cfg, err := identity.ReadConfig(r.config, identity.WithExtraConfigs(true), identity.WithParentDirsConfigs(false))
 	if err != nil {
 		showErr(cmd, err)
 		return false

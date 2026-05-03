@@ -59,20 +59,20 @@ func (fn configReadOptionFunc) configure(s *readConfigSetup) { fn(s) }
 
 func WithExtraConfigs(with bool) ConfigReadOption {
 	return configReadOptionFunc(func(s *readConfigSetup) {
-		s.readExtraConfigs = true
+		s.readExtraConfigs = with
 	})
 }
 
 func WithParentDirsConfigs(with bool) ConfigReadOption {
 	return configReadOptionFunc(func(s *readConfigSetup) {
-		s.readParentConfigs = true
+		s.readParentConfigs = with
 	})
 }
 
 func ReadConfig(path string, opts ...ConfigReadOption) (*configv2.Config, error) {
 	s := &readConfigSetup{
 		readExtraConfigs:  true,
-		readParentConfigs: true,
+		readParentConfigs: false,
 	}
 	for _, opt := range opts {
 		opt.configure(s)
