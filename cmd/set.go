@@ -43,13 +43,8 @@ func setCmdRun(cmd *cobra.Command, r *rootOptions, o *setOptions, args []string)
 		return false
 	}
 
-	cfg, _, err := identity.ReadConfig(r.config)
+	cfg, err := identity.ReadConfig(r.config, identity.WithExtraConfigs(true), identity.WithParentDirsConfigs(true))
 	if err != nil {
-		showErr(cmd, err)
-		return false
-	}
-
-	if err := identity.MergeExtraConfigs(cfg); err != nil {
 		showErr(cmd, err)
 		return false
 	}
